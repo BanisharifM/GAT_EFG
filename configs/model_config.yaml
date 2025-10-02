@@ -1,0 +1,46 @@
+# Model Architecture
+model:
+  node_feature_dim: 3
+  global_feature_dim: 8
+  hidden_dim: 64
+  num_gat_layers: 2
+  num_heads: 4
+  dropout: 0.1
+  pooling: 'mean'  # Options: 'mean', 'max', 'both'
+
+# Training
+training:
+  batch_size: 32
+  num_epochs: 100
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  patience: 15  # Early stopping patience
+  
+# Optimizer
+optimizer:
+  type: 'adam'  # Options: 'adam', 'adamw'
+  betas: [0.9, 0.999]
+  
+# Learning rate scheduler
+scheduler:
+  type: 'reduce_on_plateau'  # Options: 'reduce_on_plateau', 'cosine', 'step'
+  factor: 0.5
+  patience: 5
+  min_lr: 0.00001
+
+# Data
+data:
+  num_workers: 4
+  pin_memory: true
+
+# Paths
+paths:
+  train: 'data/splits/train.csv'
+  val: 'data/splits/val.csv'
+  test: 'data/splits/test.csv'
+  metadata: 'data/processed/merged_metadata.json'
+  checkpoints: 'experiments/checkpoints'
+  logs: 'experiments/logs'
+
+# Device
+device: 'cuda'  # 'cuda' or 'cpu'
