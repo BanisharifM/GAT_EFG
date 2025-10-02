@@ -15,9 +15,10 @@ class CoreGraphDataset(Dataset):
     """Dataset that creates graph representation of core configurations."""
     
     def __init__(self, 
-                 csv_path: str,
-                 metadata_path: Optional[str] = None,
-                 num_cores: int = 8):
+                csv_path: str,
+                metadata_path: Optional[str] = None,
+                num_cores: int = 8,
+                target_column: str = 'time_elapsed'):
         """Initialize dataset."""
         self.num_cores = num_cores
         self.df = pd.read_csv(csv_path)
@@ -31,7 +32,7 @@ class CoreGraphDataset(Dataset):
         # Define feature columns
         self.node_feature_cols = self._get_node_feature_columns()
         self.global_feature_cols = self._get_global_feature_columns()
-        self.target_col = 'time_elapsed'
+        self.target_col = target_column  # Use parameter instead of hardcoded
         
         # Create edge index (fully connected graph)
         self.edge_index = self._create_edge_index()
@@ -40,6 +41,7 @@ class CoreGraphDataset(Dataset):
         print(f"  Samples: {len(self.df)}")
         print(f"  Node features per core: {len(self.node_feature_cols) // num_cores}")
         print(f"  Global features: {len(self.global_feature_cols)}")
+        print(f"  Target: {self.target_col}")
         print(f"  Graph: {num_cores} nodes, fully connected")
     
     def _get_node_feature_columns(self) -> List[str]:
@@ -140,14 +142,16 @@ def create_dataloaders(train_path: str,
                        test_path: str,
                        batch_size: int = 32,
                        num_workers: int = 4,
-                       metadata_path: Optional[str] = None) -> Tuple:
+                       metadata_path: Optional[str] = None,
+                       target_column: str = 'time_elapsed') -> Tuple:  # Add parameter
     """Create DataLoaders with custom collate function."""
     from torch.utils.data import DataLoader
     
     # Create datasets
-    train_dataset = CoreGraphDataset(train_path, metadata_path)
-    val_dataset = CoreGraphDataset(val_path, metadata_path)
-    test_dataset = CoreGraphDataset(test_path, metadata_path)
+    train_dataset = CoreGraphDataset(train_path, metadata_path, target_column=target_column)
+    val_dataset = CoreGraphDataset(val_path, metadata_path, target_column=target_column)
+    test_dataset = CoreGraphDataset(test_path, metadata_path, target_column=target_column)
+    
     
     # Create dataloaders with custom collate
     train_loader = DataLoader(

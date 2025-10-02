@@ -1,0 +1,47 @@
+# Model Architecture
+model:
+  node_feature_dim: 3
+  global_feature_dim: 8
+  hidden_dim: 128        # Increased from 64
+  num_gat_layers: 3      # Increased from 2
+  num_heads: 4
+  dropout: 0.2           # Increased from 0.1
+  pooling: 'both'        # Changed from 'mean'
+
+# Training
+training:
+  batch_size: 32
+  num_epochs: 100
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  patience: 15
+  
+# Optimizer
+optimizer:
+  type: 'adam'
+  betas: [0.9, 0.999]
+  
+# Learning rate scheduler
+scheduler:
+  type: 'reduce_on_plateau'
+  factor: 0.5
+  patience: 5
+  min_lr: 0.00001
+
+# Data
+data:
+  num_workers: 4
+  pin_memory: true
+  target_column: 'time_elapsed_log'  # NEW: Use log-transformed target
+
+# Paths
+paths:
+  train: 'data/splits/train_log.csv'
+  val: 'data/splits/val_log.csv'
+  test: 'data/splits/test_log.csv'
+  metadata: 'data/processed/scaler_params_log.json'
+  checkpoints: 'experiments/checkpoints'
+  logs: 'experiments/logs'
+
+# Device
+device: 'cuda'

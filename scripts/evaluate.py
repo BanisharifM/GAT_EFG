@@ -17,7 +17,7 @@ from src.models.gat import create_model
 
 
 @torch.no_grad()
-def evaluate(model, loader, device, scaler_params):
+def evaluate(model, loader, device, scaler_params, use_log=False):
     """Evaluate model and denormalize predictions."""
     model.eval()
     
@@ -34,20 +34,34 @@ def evaluate(model, loader, device, scaler_params):
     preds = np.concatenate(all_preds).flatten()
     targets = np.concatenate(all_targets).flatten()
     
-    # Denormalize (reverse z-score)
-    # Find time_elapsed in scaler params
-    target_idx = scaler_params['columns'].index('time_elapsed')
-    mean = scaler_params['mean'][target_idx]
-    std = scaler_params['std'][target_idx]
-    
-    preds_real = preds * std + mean
-    targets_real = targets * std + mean
+    # Denormalize predictions
+    if use_log:
+        # Step 1: Reverse z-score normalization on log values
+        target_idx = scaler_params['columns'].index('time_elapsed_log')
+        mean = scaler_params['mean'][target_idx]
+        std = scaler_params['std'][target_idx]
+        
+        preds_log = preds * std + mean  # Now in log scale (original range)
+        targets_log = targets * std + mean
+        
+        # Step 2: Reverse log transform to get actual time
+        preds_real = np.expm1(preds_log)  # exp(log(1+x)) - 1 = x
+        targets_real = np.expm1(targets_log)
+    else:
+        # Original denormalization
+        target_idx = scaler_params['columns'].index('time_elapsed')
+        mean = scaler_params['mean'][target_idx]
+        std = scaler_params['std'][target_idx]
+        
+        preds_real = preds * std + mean
+        targets_real = targets * std + mean
     
     # Compute metrics
     mse = np.mean((preds_real - targets_real) ** 2)
     mae = np.mean(np.abs(preds_real - targets_real))
     rmse = np.sqrt(mse)
-    mape = np.mean(np.abs((preds_real - targets_real) / (targets_real + 1e-8))) * 100
+    # Avoid division by very small numbers
+    mape = np.mean(np.abs((preds_real - targets_real) / np.maximum(targets_real, 0.01))) * 100
     
     return {
         'mse': float(mse),
@@ -71,16 +85,21 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
     
-    # Load checkpoint with proper device mapping
-    checkpoint = torch.load(
-        exp_dir / args.checkpoint,
-        map_location=device  # This fixes the error
-    )
+    # Load checkpoint
+    checkpoint = torch.load(exp_dir / args.checkpoint, map_location=device)
     config = checkpoint['config']
     
-    # Load scaler params
-    with open(config['paths']['metadata'], 'r') as f:
+    # Determine target column and load scaler params
+    target_col = config.get('data', {}).get('target_column', 'time_elapsed')
+    use_log = 'log' in target_col
+    
+    # Load metadata with scaler params
+    metadata_path = config['paths'].get('metadata', 'data/processed/merged_metadata.json')
+    with open(metadata_path, 'r') as f:
         metadata = json.load(f)
+    
+    print(f"Target column: {target_col}")
+    print(f"Using log transform: {use_log}")
     
     # Setup dataloaders
     print("\nLoading test data...")
@@ -90,7 +109,8 @@ def main():
         test_path=config['paths']['test'],
         batch_size=config['training']['batch_size'],
         num_workers=0,
-        metadata_path=config['paths']['metadata']
+        metadata_path=metadata_path,
+        target_column=target_col
     )
     
     # Load model
@@ -100,7 +120,7 @@ def main():
     
     # Evaluate
     print("Evaluating...")
-    results = evaluate(model, test_loader, device, metadata['scaler_params'])
+    results = evaluate(model, test_loader, device, metadata['scaler_params'], use_log=use_log)
     
     print(f"\n{'='*60}")
     print(f"Test Set Results (Real Scale - Time in Seconds)")
@@ -112,12 +132,13 @@ def main():
     
     # Sample predictions
     print(f"\nSample Predictions (first 10):")
-    print(f"  {'Predicted':>12s}  {'Actual':>12s}  {'Error':>12s}")
+    print(f"  {'Predicted':>12s}  {'Actual':>12s}  {'Error':>12s}  {'Error %':>10s}")
     for i in range(min(10, len(results['preds']))):
         pred = results['preds'][i]
         target = results['targets'][i]
         error = pred - target
-        print(f"  {pred:12.4f}  {target:12.4f}  {error:12.4f}")
+        error_pct = (error / max(target, 0.01) * 100)
+        print(f"  {pred:12.4f}  {target:12.4f}  {error:12.4f}  {error_pct:10.1f}%")
     
     # Save results
     save_dict = {k: v for k, v in results.items() if k not in ['preds', 'targets']}

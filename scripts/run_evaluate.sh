@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=gat_eval
 #SBATCH --account=bdau-delta-gpu
-#SBATCH --partition=gpuH200x8
+#SBATCH --partition=gpuH200x8-interactive
 #SBATCH --nodes=1                     
 #SBATCH --ntasks=1                   
 #SBATCH --gres=gpu:1                

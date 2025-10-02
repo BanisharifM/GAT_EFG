@@ -53,6 +53,8 @@ class Trainer:
         """Setup data loaders."""
         print("\nSetting up data loaders...")
         
+        target_col = self.config['data'].get('target_column', 'time_elapsed')  # Get from config
+        
         self.train_loader, self.val_loader, self.test_loader, self.feature_dims = \
             create_dataloaders(
                 train_path=self.config['paths']['train'],
@@ -60,7 +62,8 @@ class Trainer:
                 test_path=self.config['paths']['test'],
                 batch_size=self.config['training']['batch_size'],
                 num_workers=self.config['data']['num_workers'],
-                metadata_path=self.config['paths']['metadata']
+                metadata_path=self.config['paths']['metadata'],
+                target_column=target_col  # Pass target column
             )
     
     def setup_model(self):

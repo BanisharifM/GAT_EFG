@@ -1,13 +1,13 @@
 #!/bin/bash
 #SBATCH --job-name=gat_train
 #SBATCH --account=bdau-delta-gpu
-#SBATCH --partition=gpuH200x8
+#SBATCH --partition=gpuH200x8-interactive
 #SBATCH --nodes=1                     
 #SBATCH --ntasks=1                   
 #SBATCH --gres=gpu:1                
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
-#SBATCH --time=4:00:00
+#SBATCH --time=01:00:00
 #SBATCH --output=experiments/logs/train_%j.out
 #SBATCH --error=experiments/logs/train_%j.err
 
