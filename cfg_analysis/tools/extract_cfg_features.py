@@ -20,23 +20,24 @@ class CFGFeatureExtractor:
         self.parser = c_parser.CParser()
         
     def preprocess_c_file(self, filepath):
-        """Preprocess C file using gcc to handle includes and macros"""
+        """Read C file directly, removing problematic includes"""
         try:
-            result = subprocess.run(
-                ['gcc', '-E', '-P', str(filepath)],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
-            if result.returncode == 0:
-                return result.stdout
-            else:
-                # Fallback: try with pycparser's fake headers
-                return parse_file(str(filepath), use_cpp=True)
-        except Exception as e:
-            print(f"Warning: Preprocessing failed for {filepath}: {e}")
             with open(filepath, 'r') as f:
-                return f.read()
+                content = f.read()
+            
+            # Remove custom header includes that cause problems
+            lines = []
+            for line in content.split('\n'):
+                # Skip problematic includes
+                if '#include' in line and any(h in line for h in ['"', 'bots.h', 'app-desc.h', 'param.h']):
+                    lines.append(f'// {line}  // Removed by CFG extractor')
+                else:
+                    lines.append(line)
+            
+            return '\n'.join(lines)
+        except Exception as e:
+            print(f"Warning: Reading failed for {filepath}: {e}")
+            return ""
     
     def extract_cfg_from_ast(self, ast_node, func_name=None):
         """Extract CFG information from parsed AST"""
