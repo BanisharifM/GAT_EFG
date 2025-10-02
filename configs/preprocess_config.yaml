@@ -1,0 +1,206 @@
+# ==============================================================================
+# Data Preprocessing Configuration - Multi-Platform Support
+# ==============================================================================
+
+datasets:
+  rubikpi:
+    raw_data: "data/raw/profiling_data_rubikpi.csv"
+    processed_data: "data/processed/rubikpi_processed.csv"
+    normalized_data: "data/processed/rubikpi_normalized.csv"
+    metadata: "data/processed/rubikpi_metadata.json"
+    platform_name: "Rubikpi"
+  
+  tx2:
+    raw_data: "data/raw/profiling_data_tx2.csv"
+    processed_data: "data/processed/tx2_processed.csv"
+    normalized_data: "data/processed/tx2_normalized.csv"
+    metadata: "data/processed/tx2_metadata.json"
+    platform_name: "JetsonTX2"
+  
+  nx:
+    raw_data: "data/raw/profiling_data_nx.csv"
+    processed_data: "data/processed/nx_processed.csv"
+    normalized_data: "data/processed/nx_normalized.csv"
+    metadata: "data/processed/nx_metadata.json"
+    platform_name: "JetsonNX"
+
+# Merged dataset paths
+merged:
+  processed_data: "data/processed/merged_processed.csv"
+  normalized_data: "data/processed/merged_normalized.csv"
+  metadata: "data/processed/merged_metadata.json"
+
+# ==============================================================================
+# Features Configuration
+# ==============================================================================
+
+features:
+  
+  categorical:
+    run_mode:
+      dtype: "int8"
+      mapping:
+        sequential: 0
+        parallel: 1
+    
+    benchmark:
+      dtype: "int8"
+      auto_detect: true
+    
+    platform:
+      dtype: "int8"
+      mapping:
+        Rubikpi: 0
+        RubikPi: 0
+        JetsonTX2: 1
+        JetsonNX: 2
+  
+  numerical:
+    frequency_index:
+      dtype: "int16"
+    
+    num_cores:
+      dtype: "int8"
+    
+    cores_str:
+      dtype: "int8"
+    
+    avg_temp_before:
+      dtype: "float32"
+  
+  arrays:
+    frequency_combination:
+      dtype: "int16"
+      length: 8
+      output_prefix: "freq_lvl"
+    
+    frequencies:
+      dtype: "int32"
+      length: 8
+      output_prefix: "freq_hz"
+  
+  special:
+    core_combination:
+      parse_as: "binary_mask"
+      dtype: "int8"
+      length: 8
+      output_prefix: "core_active"
+  
+  thermal:
+    input_prefix: "thermal_zone_before"
+    exclude_zeros: true
+    output_column: "thermal_init_mean"
+    dtype: "float32"
+
+# ==============================================================================
+# Target Variables
+# ==============================================================================
+
+targets:
+  - name: "time_elapsed"
+    dtype: "float32"
+
+# ==============================================================================
+# Normalization
+# ==============================================================================
+
+normalization:
+  method: "standard"
+  
+  numerical_features:
+    - frequency_index
+    - num_cores
+    - cores_str
+    - avg_temp_before
+    - thermal_init_mean
+    - freq_lvl_0
+    - freq_lvl_1
+    - freq_lvl_2
+    - freq_lvl_3
+    - freq_lvl_4
+    - freq_lvl_5
+    - freq_lvl_6
+    - freq_lvl_7
+    - freq_hz_0
+    - freq_hz_1
+    - freq_hz_2
+    - freq_hz_3
+    - freq_hz_4
+    - freq_hz_5
+    - freq_hz_6
+    - freq_hz_7
+  
+  target:
+    - time_elapsed
+  
+  exclude:
+    - run_mode
+    - benchmark
+    - platform
+    - core_active_0
+    - core_active_1
+    - core_active_2
+    - core_active_3
+    - core_active_4
+    - core_active_5
+    - core_active_6
+    - core_active_7
+
+# ==============================================================================
+# Data Cleaning
+# ==============================================================================
+
+cleaning:
+  remove_duplicates: true
+  drop_na: true
+  
+  constraints:
+    time_elapsed:
+      min: 0.001
+      max: 10000
+    num_cores:
+      min: 1
+      max: 8
+
+# ==============================================================================
+# GAT Structure
+# ==============================================================================
+
+gat_structure:
+  num_nodes: 8
+  
+  node_features:
+    - core_active_0
+    - core_active_1
+    - core_active_2
+    - core_active_3
+    - core_active_4
+    - core_active_5
+    - core_active_6
+    - core_active_7
+    - freq_lvl_0
+    - freq_lvl_1
+    - freq_lvl_2
+    - freq_lvl_3
+    - freq_lvl_4
+    - freq_lvl_5
+    - freq_lvl_6
+    - freq_lvl_7
+    - freq_hz_0
+    - freq_hz_1
+    - freq_hz_2
+    - freq_hz_3
+    - freq_hz_4
+    - freq_hz_5
+    - freq_hz_6
+    - freq_hz_7
+  
+  global_features:
+    - run_mode
+    - benchmark
+    - platform
+    - num_cores
+    - cores_str
+    - avg_temp_before
+    - thermal_init_mean
+    - frequency_index
