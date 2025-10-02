@@ -1,0 +1,28 @@
+# Training configuration with CFG features
+data:
+  train_file: "data/splits/train_log_with_cfg.csv"
+  val_file: "data/splits/val_log_with_cfg.csv"
+  test_file: "data/splits/test_log_with_cfg.csv"
+  metadata_file: "data/processed/merged_metadata_processed.json"
+  use_cfg_features: true  # Enable CFG features
+  target_column: "time_elapsed"
+
+model:
+  type: "gat"
+  hidden_dim: 64
+  num_layers: 3
+  num_heads: 4
+  dropout: 0.1
+  pooling: "both"
+
+training:
+  batch_size: 32
+  num_epochs: 100
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  patience: 15
+  num_workers: 4
+
+experiment:
+  name: "exp_005_gat_with_cfg"
+  save_dir: "experiments/checkpoints"
