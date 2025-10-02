@@ -1,0 +1,282 @@
+#!/usr/bin/env python3
+"""
+Training script for GAT performance prediction model.
+
+Usage:
+    python scripts/train.py --config configs/model_config.yaml --experiment exp_001
+"""
+
+import argparse
+import yaml
+import json
+import torch
+import torch.nn as nn
+from pathlib import Path
+import sys
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+
+sys.path.append(str(Path(__file__).parent.parent))
+
+from src.data.dataset import create_dataloaders
+from src.models.gat import create_model
+
+
+class Trainer:
+    """Training pipeline for GAT model."""
+    
+    def __init__(self, config, experiment_name):
+        self.config = config
+        self.experiment_name = experiment_name
+        
+        # Setup device
+        self.device = torch.device(
+            config['device'] if torch.cuda.is_available() else 'cpu'
+        )
+        print(f"Using device: {self.device}")
+        
+        # Create experiment directory
+        self.exp_dir = Path(config['paths']['checkpoints']) / experiment_name
+        self.exp_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Save config
+        with open(self.exp_dir / 'config.yaml', 'w') as f:
+            yaml.dump(config, f)
+        
+        # Initialize tracking
+        self.best_val_loss = float('inf')
+        self.patience_counter = 0
+        self.train_losses = []
+        self.val_losses = []
+        
+    def setup_data(self):
+        """Setup data loaders."""
+        print("\nSetting up data loaders...")
+        
+        self.train_loader, self.val_loader, self.test_loader, self.feature_dims = \
+            create_dataloaders(
+                train_path=self.config['paths']['train'],
+                val_path=self.config['paths']['val'],
+                test_path=self.config['paths']['test'],
+                batch_size=self.config['training']['batch_size'],
+                num_workers=self.config['data']['num_workers'],
+                metadata_path=self.config['paths']['metadata']
+            )
+    
+    def setup_model(self):
+        """Setup model, optimizer, loss."""
+        print("\nSetting up model...")
+        
+        # Update config with actual feature dimensions
+        self.config['model']['node_feature_dim'] = self.feature_dims[0]
+        self.config['model']['global_feature_dim'] = self.feature_dims[1]
+        
+        # Create model
+        self.model = create_model(self.config['model']).to(self.device)
+        
+        # Count parameters
+        total_params = sum(p.numel() for p in self.model.parameters())
+        print(f"Model parameters: {total_params:,}")
+        
+        # Setup optimizer
+        if self.config['optimizer']['type'] == 'adam':
+            self.optimizer = torch.optim.Adam(
+                self.model.parameters(),
+                lr=self.config['training']['learning_rate'],
+                weight_decay=self.config['training']['weight_decay'],
+                betas=self.config['optimizer']['betas']
+            )
+        elif self.config['optimizer']['type'] == 'adamw':
+            self.optimizer = torch.optim.AdamW(
+                self.model.parameters(),
+                lr=self.config['training']['learning_rate'],
+                weight_decay=self.config['training']['weight_decay'],
+                betas=self.config['optimizer']['betas']
+            )
+        
+        # Setup scheduler
+        if self.config['scheduler']['type'] == 'reduce_on_plateau':
+            self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                self.optimizer,
+                mode='min',
+                factor=self.config['scheduler']['factor'],
+                patience=self.config['scheduler']['patience'],
+                min_lr=self.config['scheduler']['min_lr']
+            )
+        
+        # Loss function (MSE for regression)
+        self.criterion = nn.MSELoss()
+    
+    def train_epoch(self):
+        """Train for one epoch."""
+        self.model.train()
+        total_loss = 0
+        
+        pbar = tqdm(self.train_loader, desc='Training')
+        for batch in pbar:
+            batch = batch.to(self.device)
+            
+            # Forward
+            self.optimizer.zero_grad()
+            out = self.model(
+                batch.x,
+                batch.edge_index,
+                batch.global_features,
+                batch.batch
+            )
+            
+            # Compute loss
+            loss = self.criterion(out, batch.y)
+            
+            # Backward
+            loss.backward()
+            self.optimizer.step()
+            
+            total_loss += loss.item()
+            pbar.set_postfix({'loss': loss.item()})
+        
+        return total_loss / len(self.train_loader)
+    
+    @torch.no_grad()
+    def validate(self):
+        """Validate model."""
+        self.model.eval()
+        total_loss = 0
+        
+        for batch in self.val_loader:
+            batch = batch.to(self.device)
+            
+            out = self.model(
+                batch.x,
+                batch.edge_index,
+                batch.global_features,
+                batch.batch
+            )
+            
+            loss = self.criterion(out, batch.y)
+            total_loss += loss.item()
+        
+        return total_loss / len(self.val_loader)
+    
+    def save_checkpoint(self, epoch, is_best=False):
+        """Save model checkpoint."""
+        checkpoint = {
+            'epoch': epoch,
+            'model_state_dict': self.model.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            'scheduler_state_dict': self.scheduler.state_dict(),
+            'best_val_loss': self.best_val_loss,
+            'config': self.config
+        }
+        
+        # Save latest
+        torch.save(checkpoint, self.exp_dir / 'latest.pth')
+        
+        # Save best
+        if is_best:
+            torch.save(checkpoint, self.exp_dir / 'best.pth')
+    
+    def plot_losses(self):
+        """Plot training curves."""
+        plt.figure(figsize=(10, 5))
+        plt.plot(self.train_losses, label='Train Loss')
+        plt.plot(self.val_losses, label='Val Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('MSE Loss')
+        plt.title('Training Curves')
+        plt.legend()
+        plt.grid(True)
+        plt.savefig(self.exp_dir / 'training_curves.png', dpi=150, bbox_inches='tight')
+        plt.close()
+    
+    def train(self):
+        """Main training loop."""
+        print(f"\n{'='*60}")
+        print(f"Starting training: {self.experiment_name}")
+        print(f"{'='*60}\n")
+        
+        for epoch in range(self.config['training']['num_epochs']):
+            # Train
+            train_loss = self.train_epoch()
+            self.train_losses.append(train_loss)
+            
+            # Validate
+            val_loss = self.validate()
+            self.val_losses.append(val_loss)
+            
+            # Update scheduler
+            self.scheduler.step(val_loss)
+            
+            # Get current learning rate
+            current_lr = self.optimizer.param_groups[0]['lr']
+            
+            print(f"Epoch {epoch+1:03d}: "
+                  f"Train Loss={train_loss:.6f}, "
+                  f"Val Loss={val_loss:.6f}, "
+                  f"LR={current_lr:.6f}")
+            
+            # Check for improvement
+            is_best = val_loss < self.best_val_loss
+            if is_best:
+                self.best_val_loss = val_loss
+                self.patience_counter = 0
+                print(f"  → New best validation loss: {val_loss:.6f}")
+            else:
+                self.patience_counter += 1
+            
+            # Save checkpoint
+            self.save_checkpoint(epoch, is_best)
+            
+            # Early stopping
+            if self.patience_counter >= self.config['training']['patience']:
+                print(f"\nEarly stopping at epoch {epoch+1}")
+                break
+        
+        # Plot losses
+        self.plot_losses()
+        
+        # Save final results
+        results = {
+            'best_val_loss': float(self.best_val_loss),
+            'final_train_loss': float(self.train_losses[-1]),
+            'final_val_loss': float(self.val_losses[-1]),
+            'num_epochs': len(self.train_losses)
+        }
+        
+        with open(self.exp_dir / 'results.json', 'w') as f:
+            json.dump(results, f, indent=2)
+        
+        print(f"\n{'='*60}")
+        print(f"Training complete!")
+        print(f"Best val loss: {self.best_val_loss:.6f}")
+        print(f"Results saved to: {self.exp_dir}")
+        print(f"{'='*60}\n")
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Train GAT model')
+    parser.add_argument('--config', type=str, 
+                       default='configs/model_config.yaml',
+                       help='Config file path')
+    parser.add_argument('--experiment', type=str, required=True,
+                       help='Experiment name')
+    
+    args = parser.parse_args()
+    
+    # Load config
+    with open(args.config, 'r') as f:
+        config = yaml.safe_load(f)
+    
+    # Create trainer
+    trainer = Trainer(config, args.experiment)
+    
+    # Setup
+    trainer.setup_data()
+    trainer.setup_model()
+    
+    # Train
+    trainer.train()
+
+
+if __name__ == '__main__':
+    main()
