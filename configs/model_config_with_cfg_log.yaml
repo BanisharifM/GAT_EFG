@@ -1,0 +1,42 @@
+# WITH CFG features + log transform
+model:
+  node_feature_dim: 3
+  global_feature_dim: 35  # 8 + 27 CFG
+  hidden_dim: 128
+  num_gat_layers: 3
+  num_heads: 4
+  dropout: 0.2
+  pooling: 'both'
+
+training:
+  batch_size: 32
+  num_epochs: 100
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  patience: 15
+  
+optimizer:
+  type: 'adam'
+  betas: [0.9, 0.999]
+  
+scheduler:
+  type: 'reduce_on_plateau'
+  factor: 0.5
+  patience: 5
+  min_lr: 0.00001
+
+data:
+  num_workers: 4
+  pin_memory: true
+  target_column: 'time_elapsed_log'  # Log-transformed
+  use_cfg_features: true
+
+paths:
+  train: 'data/splits/train_log_with_cfg.csv'
+  val: 'data/splits/val_log_with_cfg.csv'
+  test: 'data/splits/test_log_with_cfg.csv'
+  metadata: 'data/processed/scaler_params_log_with_cfg.json'
+  checkpoints: 'experiments/checkpoints'
+  logs: 'experiments/logs'
+
+device: 'cuda'
