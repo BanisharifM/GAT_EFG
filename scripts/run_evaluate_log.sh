@@ -14,5 +14,5 @@ cd /work/hdd/bdau/mbanisharifdehkordi/GAT_EFG
 PYTHON_PATH="$HOME/.conda/envs/gnn4_env/bin/python"
 
 srun $PYTHON_PATH scripts/evaluate.py \
-    --experiment exp_002_log_transform \
+    --experiment exp_004_mlp_baseline \
     --checkpoint best.pth

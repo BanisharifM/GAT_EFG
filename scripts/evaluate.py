@@ -89,17 +89,19 @@ def main():
     checkpoint = torch.load(exp_dir / args.checkpoint, map_location=device)
     config = checkpoint['config']
     
-    # Determine target column and load scaler params
+    # Determine model type and target column
+    model_type = config['model'].get('type', 'gat')
     target_col = config.get('data', {}).get('target_column', 'time_elapsed')
     use_log = 'log' in target_col
     
-    # Load metadata with scaler params
+    print(f"Model type: {model_type}")
+    print(f"Target column: {target_col}")
+    print(f"Using log transform: {use_log}")
+    
+    # Load metadata
     metadata_path = config['paths'].get('metadata', 'data/processed/merged_metadata.json')
     with open(metadata_path, 'r') as f:
         metadata = json.load(f)
-    
-    print(f"Target column: {target_col}")
-    print(f"Using log transform: {use_log}")
     
     # Setup dataloaders
     print("\nLoading test data...")
@@ -113,9 +115,15 @@ def main():
         target_column=target_col
     )
     
-    # Load model
+    # Load correct model
     print("Loading model...")
-    model = create_model(config['model']).to(device)
+    if model_type == 'mlp':
+        from src.models.baseline import create_mlp_model
+        model = create_mlp_model(config['model']).to(device)
+    else:
+        from src.models.gat import create_model
+        model = create_model(config['model']).to(device)
+    
     model.load_state_dict(checkpoint['model_state_dict'])
     
     # Evaluate

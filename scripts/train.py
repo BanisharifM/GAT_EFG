@@ -74,13 +74,21 @@ class Trainer:
         self.config['model']['node_feature_dim'] = self.feature_dims[0]
         self.config['model']['global_feature_dim'] = self.feature_dims[1]
         
-        # Create model
-        self.model = create_model(self.config['model']).to(self.device)
+        # Create model based on type
+        model_type = self.config['model'].get('type', 'gat')
+        
+        if model_type == 'mlp':
+            from src.models.baseline import create_mlp_model
+            self.model = create_mlp_model(self.config['model']).to(self.device)
+        else:
+            from src.models.gat import create_model
+            self.model = create_model(self.config['model']).to(self.device)
         
         # Count parameters
         total_params = sum(p.numel() for p in self.model.parameters())
+        print(f"Model type: {model_type.upper()}")
         print(f"Model parameters: {total_params:,}")
-        
+
         # Setup optimizer
         if self.config['optimizer']['type'] == 'adam':
             self.optimizer = torch.optim.Adam(
