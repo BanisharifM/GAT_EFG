@@ -52,6 +52,7 @@ features:
       mapping:
         Rubikpi: 0
         RubikPi: 0
+        RUBIKPi: 0
         JetsonTX2: 1
         JetsonNX: 2
   

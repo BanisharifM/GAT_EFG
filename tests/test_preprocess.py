@@ -1,8 +1,21 @@
-# Process all datasets (rubikpi, tx2, nx) and merge
-python scripts/preprocess_data.py --config configs/preprocess_config.yaml
+# Step 1: Process all raw files
+python scripts/01_process_data.py --config configs/preprocess_config.yaml
 
-# Process only RubikPi dataset
-python scripts/preprocess_data.py --config configs/preprocess_config.yaml --dataset rubikpi
+# Step 2: Normalize each dataset independently
+python scripts/02_normalize_data.py --config configs/preprocess_config.yaml
 
-# Process only TX2 dataset
-python scripts/preprocess_data.py --config configs/preprocess_config.yaml --dataset tx2
+
+# Step 1: Process all raw files + create merged
+python scripts/01_process_data.py --config configs/preprocess_config.yaml
+
+# Step 2: Fit scaler on merged, normalize all
+python scripts/02_normalize_data.py --config configs/preprocess_config.yaml --fit-on-merged
+
+
+# Process one file
+python scripts/01_process_data.py --config configs/preprocess_config.yaml
+
+# Normalize just rubikpi
+python scripts/02_normalize_data.py \
+    --input data/processed/rubikpi_processed.csv \
+    --output data/processed/rubikpi_normalized.csv

@@ -356,18 +356,43 @@ class DataPreprocessor:
         
         # Save metadata
         metadata = {
-            'label_encoders': self.label_encoders,
-            'scaler_params': self.scaler_params,
+            'label_encoders': self._convert_to_json_serializable(self.label_encoders),
+            'scaler_params': self._convert_to_json_serializable(self.scaler_params),
             'final_columns': final_cols,
-            'num_samples': len(df_processed),
+            'num_samples': int(len(df_processed)),  # Convert to native Python int
             'gat_structure': self.config['gat_structure']
         }
-        
+
         with open(output_metadata, 'w') as f:
             json.dump(metadata, f, indent=2)
         print(f"Saved metadata: {output_metadata}\n")
         
         return df_processed, df_normalized
+
+    def _convert_to_json_serializable(self, obj):
+        """
+        Convert numpy/pandas types to JSON serializable Python types.
+        
+        Args:
+            obj: Object to convert
+            
+        Returns:
+            JSON serializable object
+        """
+        import numpy as np
+        
+        if isinstance(obj, dict):
+            return {key: self._convert_to_json_serializable(val) for key, val in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_to_json_serializable(item) for item in obj]
+        elif isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        else:
+            return obj
     
     def _get_final_columns(self) -> List[str]:
         """Get list of final columns in correct order."""
