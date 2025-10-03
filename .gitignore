@@ -62,5 +62,3 @@ Thumbs.db
 *.ckpt
 
 # Logs
-*.log
-logs/

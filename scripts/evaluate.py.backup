@@ -41,13 +41,14 @@ def evaluate(model, loader, device, scaler_params, use_log=False):
         mean = scaler_params['mean'][target_idx]
         std = scaler_params['std'][target_idx]
         
-        preds_log = preds * std + mean
+        preds_log = preds * std + mean  # Now in log scale (original range)
         targets_log = targets * std + mean
         
         # Step 2: Reverse log transform to get actual time
-        preds_real = np.expm1(preds_log)
+        preds_real = np.expm1(preds_log)  # exp(log(1+x)) - 1 = x
         targets_real = np.expm1(targets_log)
     else:
+        # Original denormalization
         target_idx = scaler_params['columns'].index('time_elapsed')
         mean = scaler_params['mean'][target_idx]
         std = scaler_params['std'][target_idx]
@@ -59,6 +60,7 @@ def evaluate(model, loader, device, scaler_params, use_log=False):
     mse = np.mean((preds_real - targets_real) ** 2)
     mae = np.mean(np.abs(preds_real - targets_real))
     rmse = np.sqrt(mse)
+    # Avoid division by very small numbers
     mape = np.mean(np.abs((preds_real - targets_real) / np.maximum(targets_real, 0.01))) * 100
     
     return {
@@ -79,12 +81,15 @@ def main():
     
     exp_dir = Path('experiments/checkpoints') / args.experiment
     
+    # Setup device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
     
+    # Load checkpoint
     checkpoint = torch.load(exp_dir / args.checkpoint, map_location=device)
     config = checkpoint['config']
     
+    # Determine model type and target column
     model_type = config['model'].get('type', 'gat')
     target_col = config.get('data', {}).get('target_column', 'time_elapsed')
     use_log = 'log' in target_col
@@ -93,19 +98,13 @@ def main():
     print(f"Target column: {target_col}")
     print(f"Using log transform: {use_log}")
     
-    # FIXED: Load metadata correctly
+    # Load metadata
     metadata_path = config['paths'].get('metadata', 'data/processed/merged_metadata.json')
     with open(metadata_path, 'r') as f:
         metadata = json.load(f)
     
-    # Handle different metadata formats
-    if 'scaler_params' in metadata:
-        scaler_params = metadata['scaler_params']
-    else:
-        scaler_params = metadata
-    
+    # Setup dataloaders
     print("\nLoading test data...")
-    use_cfg = config.get('data', {}).get('use_cfg_features', False)
     _, _, test_loader, _ = create_dataloaders(
         train_path=config['paths']['train'],
         val_path=config['paths']['val'],
@@ -113,21 +112,23 @@ def main():
         batch_size=config['training']['batch_size'],
         num_workers=0,
         metadata_path=metadata_path,
-        target_column=target_col,
-        use_cfg_features=use_cfg
+        target_column=target_col
     )
     
+    # Load correct model
     print("Loading model...")
     if model_type == 'mlp':
         from src.models.baseline import create_mlp_model
         model = create_mlp_model(config['model']).to(device)
     else:
+        from src.models.gat import create_model
         model = create_model(config['model']).to(device)
     
     model.load_state_dict(checkpoint['model_state_dict'])
     
+    # Evaluate
     print("Evaluating...")
-    results = evaluate(model, test_loader, device, scaler_params, use_log=use_log)
+    results = evaluate(model, test_loader, device, metadata['scaler_params'], use_log=use_log)
     
     print(f"\n{'='*60}")
     print(f"Test Set Results (Real Scale - Time in Seconds)")
@@ -137,6 +138,7 @@ def main():
     print(f"  MAE:  {results['mae']:.4f} s")
     print(f"  MAPE: {results['mape']:.2f}%")
     
+    # Sample predictions
     print(f"\nSample Predictions (first 10):")
     print(f"  {'Predicted':>12s}  {'Actual':>12s}  {'Error':>12s}  {'Error %':>10s}")
     for i in range(min(10, len(results['preds']))):
@@ -146,6 +148,7 @@ def main():
         error_pct = (error / max(target, 0.01) * 100)
         print(f"  {pred:12.4f}  {target:12.4f}  {error:12.4f}  {error_pct:10.1f}%")
     
+    # Save results
     save_dict = {k: v for k, v in results.items() if k not in ['preds', 'targets']}
     with open(exp_dir / 'test_results.json', 'w') as f:
         json.dump(save_dict, f, indent=2)

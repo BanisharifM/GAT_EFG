@@ -1,0 +1,103 @@
+Using device: cuda
+
+Setting up data loaders...
+  Found 27 CFG features in dataset
+Dataset initialized:
+  Samples: 3292
+  Node features per core: 3
+  Global features: 35
+  Target: time_elapsed
+  Graph: 8 nodes, fully connected
+  CFG features: enabled
+  Found 27 CFG features in dataset
+Dataset initialized:
+  Samples: 706
+  Node features per core: 3
+  Global features: 35
+  Target: time_elapsed
+  Graph: 8 nodes, fully connected
+  CFG features: enabled
+  Found 27 CFG features in dataset
+Dataset initialized:
+  Samples: 706
+  Node features per core: 3
+  Global features: 35
+  Target: time_elapsed
+  Graph: 8 nodes, fully connected
+  CFG features: enabled
+
+DataLoaders created:
+  Train: 3292 samples, 103 batches
+  Val:   706 samples, 23 batches
+  Test:  706 samples, 23 batches
+  Feature dims: node=3, global=35
+
+Setting up model...
+Model type: GAT
+Model parameters: 549,889
+
+============================================================
+Starting training: exp_005_gat_with_cfg
+============================================================
+
+Epoch 001: Train Loss=230.171848, Val Loss=241.124189, LR=0.001000
+  → New best validation loss: 241.124189
+Epoch 002: Train Loss=225.366661, Val Loss=237.296657, LR=0.001000
+  → New best validation loss: 237.296657
+Epoch 003: Train Loss=224.529584, Val Loss=237.412314, LR=0.001000
+Epoch 004: Train Loss=225.605250, Val Loss=237.468743, LR=0.001000
+Epoch 005: Train Loss=224.932918, Val Loss=238.144252, LR=0.001000
+Epoch 006: Train Loss=224.701249, Val Loss=241.034702, LR=0.001000
+Epoch 007: Train Loss=226.399687, Val Loss=237.617347, LR=0.001000
+Epoch 008: Train Loss=224.843664, Val Loss=237.218907, LR=0.001000
+  → New best validation loss: 237.218907
+Epoch 009: Train Loss=224.169067, Val Loss=237.638918, LR=0.001000
+Epoch 010: Train Loss=224.684067, Val Loss=237.111676, LR=0.001000
+  → New best validation loss: 237.111676
+Epoch 011: Train Loss=225.025630, Val Loss=238.339446, LR=0.001000
+Epoch 012: Train Loss=224.294339, Val Loss=237.027884, LR=0.001000
+  → New best validation loss: 237.027884
+Epoch 013: Train Loss=224.532239, Val Loss=238.254393, LR=0.001000
+Epoch 014: Train Loss=224.236804, Val Loss=237.128214, LR=0.001000
+Epoch 015: Train Loss=224.781485, Val Loss=237.769957, LR=0.001000
+Epoch 016: Train Loss=224.187971, Val Loss=237.473347, LR=0.001000
+Epoch 017: Train Loss=224.469492, Val Loss=239.137146, LR=0.001000
+Epoch 018: Train Loss=224.269955, Val Loss=238.716717, LR=0.000500
+Epoch 019: Train Loss=224.343916, Val Loss=238.519310, LR=0.000500
+Epoch 020: Train Loss=225.266286, Val Loss=237.080776, LR=0.000500
+Epoch 021: Train Loss=225.498877, Val Loss=237.004319, LR=0.000500
+  → New best validation loss: 237.004319
+Epoch 022: Train Loss=224.002423, Val Loss=238.021635, LR=0.000500
+Epoch 023: Train Loss=224.203690, Val Loss=237.709404, LR=0.000500
+Epoch 024: Train Loss=224.179732, Val Loss=237.028282, LR=0.000250
+Epoch 025: Train Loss=224.171761, Val Loss=237.521103, LR=0.000250
+Epoch 026: Train Loss=223.944544, Val Loss=237.959114, LR=0.000250
+Epoch 027: Train Loss=223.901562, Val Loss=237.620671, LR=0.000250
+Epoch 028: Train Loss=223.936081, Val Loss=237.176635, LR=0.000250
+Epoch 029: Train Loss=223.927172, Val Loss=237.367024, LR=0.000250
+Epoch 030: Train Loss=224.510573, Val Loss=236.983491, LR=0.000250
+  → New best validation loss: 236.983491
+Epoch 031: Train Loss=225.077307, Val Loss=237.175360, LR=0.000250
+Epoch 032: Train Loss=223.801074, Val Loss=238.514246, LR=0.000250
+Epoch 033: Train Loss=224.194244, Val Loss=238.125582, LR=0.000250
+Epoch 034: Train Loss=223.869866, Val Loss=237.171971, LR=0.000250
+Epoch 035: Train Loss=223.929122, Val Loss=237.205060, LR=0.000250
+Epoch 036: Train Loss=223.919550, Val Loss=237.212745, LR=0.000125
+Epoch 037: Train Loss=223.896288, Val Loss=237.678259, LR=0.000125
+Epoch 038: Train Loss=223.859371, Val Loss=237.542969, LR=0.000125
+Epoch 039: Train Loss=223.908528, Val Loss=237.421026, LR=0.000125
+Epoch 040: Train Loss=223.699313, Val Loss=237.128564, LR=0.000125
+Epoch 041: Train Loss=223.821868, Val Loss=237.480185, LR=0.000125
+Epoch 042: Train Loss=223.848073, Val Loss=237.595448, LR=0.000063
+Epoch 043: Train Loss=223.726819, Val Loss=237.434754, LR=0.000063
+Epoch 044: Train Loss=223.794011, Val Loss=237.382551, LR=0.000063
+Epoch 045: Train Loss=223.705184, Val Loss=237.458945, LR=0.000063
+
+Early stopping at epoch 45
+
+============================================================
+Training complete!
+Best val loss: 236.983491
+Results saved to: experiments/checkpoints/exp_005_gat_with_cfg
+============================================================
+
